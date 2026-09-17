@@ -30,6 +30,9 @@ target_include_directories(elsim-gui PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 target_link_libraries(elsim-gui PRIVATE elsim-core ${QT_LIBRARIES})
+# place the GUI next to the plugins/ folder so external components load
+set_target_properties(elsim-gui PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
 if(WIN32)
     set_target_properties(elsim-gui PROPERTIES WIN32_EXECUTABLE TRUE)

@@ -42,7 +42,12 @@ The GUI additionally needs CMake and Qt (5.15 or 6):
 
     cmake -B build-cmake -DCMAKE_BUILD_TYPE=Release
     cmake --build build-cmake
-    ./build-cmake/app/elsim-gui        # plugins are picked up from build-cmake/plugins
+    ./build-cmake/elsim-gui          # plugins are picked up from build-cmake/plugins/
+
+Headless end-to-end check of the GUI stack (builds a circuit through the
+scene API, compiles nets, runs all three analyses):
+
+    QT_QPA_PLATFORM=offscreen ./build-cmake/elsim-gui --selftest
 
 Fedora dependencies:
 

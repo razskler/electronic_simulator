@@ -7,6 +7,17 @@
 #include "ec/plugin.h"
 
 class SchematicScene;
+class ComponentItem;
+
+/* Reference to one pin of one component instance. */
+struct PinRef
+{
+    PinRef() = default;
+    PinRef(ComponentItem *c, int p) : comp(c), pin(p) {}
+    ComponentItem *comp = nullptr;
+    int pin = 0;
+    bool operator==(const PinRef &o) const { return comp == o.comp && pin == o.pin; }
+};
 
 class ComponentItem : public QGraphicsItem
 {

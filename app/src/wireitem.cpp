@@ -6,12 +6,18 @@
 
 #include "schematicscene.h"
 
+static QRectF lineRect(const QLineF &l)
+{
+    return QRectF(QPointF(qMin(l.p1().x(), l.p2().x()), qMin(l.p1().y(), l.p2().y())),
+                  QPointF(qMax(l.p1().x(), l.p2().x()), qMax(l.p1().y(), l.p2().y())));
+}
+
 WireItem::WireItem(const PinRef &a_, const PinRef &b_)
     : a(a_), b(b_)
 {
     setFlag(ItemIsSelectable);
     setAcceptHoverEvents(true);
-    m_cachedRect = line().boundingRect().adjusted(-8, -8, 8, 8);
+    m_cachedRect = lineRect(line()).adjusted(-8, -8, 8, 8);
 }
 
 QLineF WireItem::line() const
@@ -28,7 +34,7 @@ QRectF WireItem::boundingRect() const
 void WireItem::sync()
 {
     prepareGeometryChange();
-    m_cachedRect = line().boundingRect().adjusted(-8, -8, 8, 8);
+    m_cachedRect = lineRect(line()).adjusted(-8, -8, 8, 8);
     update();
 }
 

@@ -22,6 +22,7 @@ target_link_libraries(elsim PRIVATE elsim-core m)
 if(UNIX)
     target_link_libraries(elsim PRIVATE dl)
 endif()
+set_target_properties(elsim PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
 add_executable(elsim_tests tests/test_all.c)
 target_link_libraries(elsim_tests PRIVATE elsim-core m)

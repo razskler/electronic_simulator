@@ -1,5 +1,7 @@
 #include "mainwindow.h"
 
+#include <cstdio>
+
 #include <QAction>
 #include <QApplication>
 #include <QCheckBox>
@@ -7,12 +9,14 @@
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QDoubleSpinBox>
+#include <QDrag>
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFormLayout>
 #include <QGraphicsItem>
 #include <QMessageBox>
+#include <QMimeData>
 #include <QPainter>
 #include <QPlainTextEdit>
 #include <QProgressBar>
@@ -24,6 +28,8 @@
 #include <QToolBar>
 #include <QTreeWidget>
 #include <QVBoxLayout>
+
+#include <utility>
 
 #include "componentitem.h"
 #include "plotpane.h"
@@ -81,7 +87,7 @@ void MainWindow::loadPlugins()
     if (const char *env = getenv("ELSIM_PLUGINS"))
         dirs << QString::fromLocal8Bit(env);
     int loaded = 0;
-    for (const QString &d : qAsConst(dirs)) {
+    for (const QString &d : std::as_const(dirs)) {
         char err[256] = { 0 };
         int n = ec_registry_load_dir(m_reg, d.toLocal8Bit().constData(), err, sizeof err);
         for (int i = m_reg->n - n; i < m_reg->n; i++) {
@@ -225,7 +231,7 @@ void MainWindow::fillPalette()
         QTreeWidgetItem *top = new QTreeWidgetItem(m_palette);
         top->setText(0, it.key());
         top->setFlags(Qt::ItemIsEnabled);
-        for (const EcPlugin *p : qAsConst(it.value())) {
+        for (const EcPlugin *p : std::as_const(it.value())) {
             QTreeWidgetItem *child = new QTreeWidgetItem(top);
             child->setText(0, QString::fromLatin1(p->label ? p->label : p->id));
             child->setData(0, Qt::UserRole, QString::fromLatin1(p->id));
@@ -248,6 +254,16 @@ void MainWindow::fillPalette()
 
 void MainWindow::log(const QString &msg)
 {
+    if (!m_console) { /* messages logged before the UI exists */
+        m_earlyLog.append(msg);
+        return;
+    }
+    if (!m_earlyLog.isEmpty()) {
+        const QStringList pending = m_earlyLog;
+        m_earlyLog.clear();
+        for (const QString &m : pending)
+            m_console->appendPlainText(m);
+    }
     m_console->appendPlainText(msg);
 }
 
@@ -663,4 +679,84 @@ void MainWindow::onSceneChanged()
     m_dcOp.clear();
     m_lastCompile.reset();
     m_compileDirty = true;
+}
+
+/* ---------------- offscreen self test ---------------- */
+
+int MainWindow::selfTest()
+{
+    int fails = 0;
+    auto addc = [this](const char *id, double x, double y) {
+        return m_scene->addComponent(m_plugins.value(QString::fromLatin1(id)), QPointF(x, y));
+    };
+    auto check = [&fails](const char *what, double got, double want, double tol) {
+        bool ok = qAbs(got - want) <= tol;
+        printf("  %-28s got %.10g want %.10g  %s\n", what, got, want, ok ? "ok" : "FAIL");
+        if (!ok)
+            fails++;
+    };
+
+    printf("selftest: DC divider through scene + compiler\n");
+    ComponentItem *v1 = addc("vsource", 0, 0);
+    ComponentItem *r1 = addc("resistor", 200, 0);
+    ComponentItem *r2 = addc("resistor", 400, 0);
+    ComponentItem *g1 = addc("ground", 400, 80);
+    m_scene->addWire(PinRef(v1, 0), PinRef(r1, 0));
+    m_scene->addWire(PinRef(v1, 1), PinRef(g1, 0));
+    m_scene->addWire(PinRef(r1, 1), PinRef(r2, 0));
+    m_scene->addWire(PinRef(r2, 1), PinRef(g1, 0));
+
+    Compiled c;
+    QString err;
+    if (!compileCircuit(m_scene, &c, &err)) {
+        printf("  compile FAILED: %s\n", err.toUtf8().constData());
+        return 1;
+    }
+    const int netB = c.netsByComp.value(r1->uid()).value(1);
+    EcResults r;
+    if (ec_analysis_dc(c.cir, &r) != 0) {
+        printf("  DC FAILED: %s\n", r.message);
+        return 1;
+    }
+    check("V(node mid)", ec_results_v(&r, 0, netB), 2.5, 1e-8);
+    ec_results_free(&r);
+
+    printf("selftest: RC transient + AC through scene + compiler\n");
+    m_scene->clearAll();
+    v1 = addc("vsource", 0, 0);
+    r1 = addc("resistor", 200, 0);
+    ComponentItem *c1 = addc("capacitor", 400, 0);
+    g1 = addc("ground", 400, 80);
+    m_scene->addWire(PinRef(v1, 0), PinRef(r1, 0));
+    m_scene->addWire(PinRef(v1, 1), PinRef(g1, 0));
+    m_scene->addWire(PinRef(r1, 1), PinRef(c1, 0));
+    m_scene->addWire(PinRef(c1, 1), PinRef(g1, 0));
+    if (!compileCircuit(m_scene, &c, &err)) {
+        printf("  compile FAILED: %s\n", err.toUtf8().constData());
+        return 1;
+    }
+    const int netOut = c.netsByComp.value(r1->uid()).value(1);
+    const double tau = 1000.0 * 1e-6;
+
+    if (ec_analysis_tr(c.cir, 3 * tau, tau / 200.0, EC_METHOD_TRAP, nullptr, nullptr, &r) != 0) {
+        printf("  TR FAILED: %s\n", r.message);
+        return 1;
+    }
+    double vTau = qQNaN();
+    for (int p = 0; p < r.n_pts; p++)
+        if (qAbs(r.sweep[p] - tau) < tau / 400.0)
+            vTau = ec_results_v(&r, p, netOut);
+    check("V(out) at t=tau (trap)", vTau, 5.0 * (1.0 - exp(-1.0)), 5e-3);
+    ec_results_free(&r);
+
+    const double fc = 1.0 / (2.0 * M_PI * tau);
+    if (ec_analysis_ac(c.cir, fc, fc, 1, 0, &r) != 0) {
+        printf("  AC FAILED: %s\n", r.message);
+        return 1;
+    }
+    check("|V(out)| at fc", ec_results_v(&r, 0, netOut), 1.0 / sqrt(2.0), 1e-6);
+    ec_results_free(&r);
+
+    printf(fails ? "SELFTEST FAILED (%d)\n" : "SELFTEST PASSED\n", fails);
+    return fails ? 1 : 0;
 }

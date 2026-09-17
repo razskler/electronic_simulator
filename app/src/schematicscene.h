@@ -3,6 +3,7 @@
 #include <QGraphicsScene>
 #include <QGraphicsSceneDragDropEvent>
 #include <QGraphicsSceneMouseEvent>
+#include <QGraphicsView>
 #include <QHash>
 #include <QKeyEvent>
 #include <QSet>

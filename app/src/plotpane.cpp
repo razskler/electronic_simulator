@@ -5,6 +5,8 @@
 #include <QPainterPath>
 #include <QtMath>
 
+#include <utility>
+
 PlotPane::PlotPane(QWidget *parent)
     : QWidget(parent)
 {
@@ -37,7 +39,7 @@ void PlotPane::autoscale()
     m_xmax = qQNaN();
     m_ymin = qQNaN();
     m_ymax = qQNaN();
-    for (const PlotSeries &s : qAsConst(m_series)) {
+    for (const PlotSeries &s : std::as_const(m_series)) {
         for (const QPointF &pt : s.pts) {
             double x = m_logX ? (pt.x() > 0 ? qLn(pt.x()) : -1e30) : pt.x();
             if (qIsNaN(m_xmin) || x < m_xmin) m_xmin = x;
@@ -145,7 +147,7 @@ void PlotPane::paintEvent(QPaintEvent *event)
     p.restore();
 
     /* series */
-    for (const PlotSeries &s : qAsConst(m_series)) {
+    for (const PlotSeries &s : std::as_const(m_series)) {
         QPainterPath path;
         bool started = false;
         for (const QPointF &pt : s.pts) {
@@ -170,7 +172,7 @@ void PlotPane::paintEvent(QPaintEvent *event)
         p.drawLine(QPointF(m_hover.x(), pa.top()), QPointF(m_hover.x(), pa.bottom()));
         double xv = unmapX(m_hover.x());
         QString txt = fmtNum(xv);
-        for (const PlotSeries &s : qAsConst(m_series)) {
+        for (const PlotSeries &s : std::as_const(m_series)) {
             if (s.pts.isEmpty())
                 continue;
             /* nearest sample */
@@ -197,7 +199,7 @@ void PlotPane::drawLegend(QPainter *p)
     p->setFont(f);
     QFontMetrics fm(f);
     int w = 0;
-    for (const PlotSeries &s : qAsConst(m_series))
+    for (const PlotSeries &s : std::as_const(m_series))
         w = qMax(w, fm.horizontalAdvance(s.label));
     int rowH = fm.height() + 2;
     QRectF box(m_m.left + 8, m_m.top - rowH, w + 34, rowH * m_series.size() + 6);
@@ -205,7 +207,7 @@ void PlotPane::drawLegend(QPainter *p)
     p->setBrush(QColor(255, 255, 255, 220));
     p->drawRect(box);
     int y = box.top() + 3;
-    for (const PlotSeries &s : qAsConst(m_series)) {
+    for (const PlotSeries &s : std::as_const(m_series)) {
         p->setPen(QPen(s.color, 3));
         p->drawLine(QPointF(box.left() + 6, y + rowH / 2), QPointF(box.left() + 22, y + rowH / 2));
         p->setPen(QPen(palette().color(QPalette::Text)));

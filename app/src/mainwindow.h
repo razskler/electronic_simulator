@@ -26,6 +26,10 @@ class MainWindow : public QMainWindow
 public:
     MainWindow();
 
+    /* Offscreen end-to-end check: builds circuits through the scene API,
+     * compiles nets and runs all three analyses. Returns process exit code. */
+    int selfTest();
+
 private slots:
     void newFile();
     void openFile();
@@ -48,6 +52,8 @@ private:
     bool ensureCompiled();
     void log(const QString &msg);
     bool maybeSave();
+
+    QStringList m_earlyLog;
 
     SchematicScene *m_scene = nullptr;
     SchematicView *m_view = nullptr;

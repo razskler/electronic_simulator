@@ -11,6 +11,8 @@ endif()
 
 option(ELSIM_BUILD_APP "Build the Qt GUI application" ON)
 
+enable_testing()
+
 add_subdirectory(core)
 add_subdirectory(plugins)
 
@@ -25,5 +27,3 @@ if(ELSIM_BUILD_APP)
         message(WARNING "Qt5/Qt6 Widgets not found - building core, CLI and plugins only. Install qt6-qtbase-devel (or equivalent) to build the GUI.")
     endif()
 endif()
-
-enable_testing()
