@@ -1,0 +1,5 @@
+; RC charging: v(t) = 5 (1 - exp(-t/RC)), tau = 1ms
+vsource V1 in 0 dc=5
+resistor R1 in out R=1k
+capacitor C1 out 0 C=1u
+.tran 1u 5m trap

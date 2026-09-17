@@ -1,0 +1,5 @@
+; voltage divider
+vsource V1 in 0 dc=5
+resistor R1 in mid R=1k
+resistor R2 mid 0 R=1k
+.op

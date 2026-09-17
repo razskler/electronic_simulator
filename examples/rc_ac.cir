@@ -1,0 +1,6 @@
+; RC lowpass bode sweep, fc = 1/(2*pi*1k*1u) = 159 Hz
+vsource V1 in 0 dc=0 ac=1
+resistor R1 in out R=1k
+capacitor C1 out 0 C=1u
+.ac 1 10k 200 log
+.op

@@ -1,0 +1,6 @@
+; LED demo using the external 'led' plugin (plugins/led.so)
+vsource V1 in 0 dc=3.3
+switch SW1 in a state=1 Ron=1m Roff=1G
+resistor R1 a vd R=220
+led D1 vd 0 Is=1e-18 N=2
+.op

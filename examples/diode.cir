@@ -1,0 +1,5 @@
+; diode characteristic
+vsource V1 in 0 dc=5
+resistor R1 in vd R=1k
+diode D1 vd 0 Is=1e-14 N=1
+.op
